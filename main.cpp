@@ -27,7 +27,7 @@ bx::sregex remote_pic_reg = bx::sregex::compile("http://(.*?)/(.*(\\..*))");
 
 void request_page(const std::string& host, const std::string& path, std::string& page);
 
-void get_pic(const std::string& uri) {
+void get_pic(const std::string& uri, int n) {
 	std::string page;
 	request_page(cl_host, uri, page);
 
@@ -35,13 +35,13 @@ void get_pic(const std::string& uri) {
 	bx::sregex_token_iterator it(page.begin(), page.end(), pic_reg, t);
 	bx::sregex_token_iterator end;
 
+	int i = 0;
 	for (; it != end; ++it) {
 		bx::smatch what;
 		if (!bx::regex_match(*it, what, remote_pic_reg))
 			continue;
 
-		if (verbose)
-			std::cout << "get picture: " << *it << std::endl;
+		std::cout << "get picture: " << *it << " #" << n << "." << ++i << std::endl;
 
 		std::string pic;
 		pic.reserve(64 * 1024);
@@ -99,7 +99,7 @@ void parse_latest_page(const std::string& page) {
 	std::cout << "\n--------------------\n";
 	for (std::vector<std::string>::iterator it = uri.begin(); it != uri.end(); ++it) {
 		std::cout << "get pictures from " << *it << " #" << ++i << std::endl;
-		get_pic(*it);
+		get_pic(*it, i);
 	}
 }
 
