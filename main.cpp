@@ -1,6 +1,8 @@
 #include <iostream>
 #include <fstream>
 #include <boost/asio.hpp>
+#include <boost/thread.hpp>
+#include <boost/program_options.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/xpressive/xpressive.hpp>
 #include <boost/date_time/gregorian/gregorian.hpp>
@@ -9,12 +11,14 @@ namespace ba = boost::asio;
 namespace bs = boost::system;
 namespace bx = boost::xpressive;
 namespace bg = boost::gregorian;
+namespace bp = boost::program_options;
 
 ba::io_service ios;
 static const char* cl_host = "cl.or.gs";
 static const char* home_url = "thread0806.php?fid=16&search=1";
 
-bool verbose = false;
+bool verbose;
+int threads;
 bg::date ge_day;
 int name_c;
 
@@ -95,12 +99,12 @@ void parse_latest_page(const std::string& page) {
 	for (std::vector<std::string>::iterator it = uri.begin(); it != uri.end(); ++it)
 		std::cout << *it << std::endl;
 
-	int i = 0;
 	std::cout << "\n--------------------\n";
-	for (std::vector<std::string>::iterator it = uri.begin(); it != uri.end(); ++it) {
-		std::cout << "get pictures from " << *it << " #" << ++i << std::endl;
-		get_pic(*it, i);
-	}
+	boost::thread_group tgrp;
+	for (int i = 0; i < threads; i++)
+		tgrp.create_thread(boost::bind(&get_pic, uri[i], i));
+
+	tgrp.join_all();
 }
 
 void request_page(const std::string& host, const std::string& path, std::string& page) {
@@ -130,11 +134,24 @@ void request_page(const std::string& host, const std::string& path, std::string&
 }
 
 int main(int argc, char* argv[]) {
-	if (argc > 1)
-		verbose = true;
+	bp::options_description desc("Allowed options");
+	desc.add_options()
+		("help", "display this message")
+		("verbose,v", "show verbose message")
+		("thread,t", bp::value<int>(&threads)->default_value(1), "set multi-thread num")
+		("date,d", bp::value<std::string>(), "capture post newer than the date");
 
-	// for alpha, must add a parameter about day
-	ge_day = bg::from_string("2013-12-14");
+	bp::variables_map vm;
+	bp::store(bp::parse_command_line(argc, argv, desc), vm);
+	bp::notify(vm);
+
+	if (vm.count("help")) {
+		std::cout << desc << "\n";
+		return 0;
+	}
+
+	verbose = vm.count("verbose") ? true : false;
+	ge_day = vm.count("date") ? bg::from_string(vm["date"].as<std::string>()) : bg::day_clock::local_day();
 
 	std::string page;
 	request_page(cl_host, home_url, page);
