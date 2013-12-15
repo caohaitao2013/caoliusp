@@ -4,6 +4,8 @@
 #include <boost/asio.hpp>
 #include <boost/shared_ptr.hpp>
 
+#define FAST_PAGE_TIMEOUT_MS 500
+
 class page_capture {
 	typedef boost::shared_ptr<boost::asio::ip::tcp::socket> sock_ptr;
 	typedef boost::shared_ptr<boost::asio::deadline_timer> timer_ptr;

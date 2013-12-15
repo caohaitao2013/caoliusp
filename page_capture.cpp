@@ -55,7 +55,7 @@ void page_capture::connected(const boost::system::error_code& e,
 	if (e)
 		return ;
 
-	m_timer.expires_from_now(bp::seconds(m_timeout_sec));
+	m_timer.expires_from_now(bp::milliseconds(FAST_PAGE_TIMEOUT_MS));
 	m_timer.async_wait(boost::bind(&page_capture::stop, this, _1));
 
 	std::string uri("GET /");
@@ -73,7 +73,7 @@ void page_capture::writed(const boost::system::error_code& e, size_t len, sock_p
 	if (e)
 		return ;
 
-	m_timer.expires_from_now(bp::seconds(m_timeout_sec));
+	m_timer.expires_from_now(bp::milliseconds(FAST_PAGE_TIMEOUT_MS));
 	m_timer.async_wait(boost::bind(&page_capture::stop, this, _1));
 
 	boost::shared_ptr<std::string> buf(boost::make_shared<std::string>());
@@ -84,10 +84,12 @@ void page_capture::writed(const boost::system::error_code& e, size_t len, sock_p
 void page_capture::readed_some(const boost::system::error_code& e, size_t len,
 	boost::shared_ptr<std::string> buf, sock_ptr sock)
 {
-	if (e)
+	if (e) {
+		m_timer.cancel();
 		return ;
+	}
 
-	m_timer.expires_from_now(bp::seconds(m_timeout_sec));
+	m_timer.expires_from_now(bp::milliseconds(FAST_PAGE_TIMEOUT_MS));
 	m_timer.async_wait(boost::bind(&page_capture::stop, this, _1));
 
 	m_page.append(*buf, 0, len);
