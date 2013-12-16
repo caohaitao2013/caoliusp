@@ -8,6 +8,7 @@
 */
 #include <iostream>
 #include <fstream>
+#include <boost/atomic.hpp>
 #include <boost/thread.hpp>
 #include <boost/foreach.hpp>
 #include <boost/program_options.hpp>
@@ -28,7 +29,7 @@ static const unsigned int timeout_sec = 10;
 bool verbose;			// show verbose message
 int threads;			// threads num
 bg::date ge_day;		// the date which page shoule newer than
-int name_c;			// pic name index
+boost::atomic<int> name_c;	// pic name index
 
 bx::sregex node_reg = bx::sregex::compile("<tr align=\"center\" class=\"tr3 t_one\" "
 	"onMouseOver=\"this.className='tr3 t_two'\" onMouseOut=\"this.className='tr3 t_one'\">.*?</tr>");
