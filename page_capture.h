@@ -1,3 +1,11 @@
+/*
+* page_capture.cpp - capture a page
+*
+* Licensed under GPLv2 orlater
+*
+* Author:	KaiWen<wenkai1987@gmail.com>
+* Date:		Mon Dec 16 15:55:09 CST 2013
+*/
 #ifndef PAGE_CAPTURE_H
 #define PAGE_CAPTURE_H
 

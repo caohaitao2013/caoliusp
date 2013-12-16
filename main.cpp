@@ -1,6 +1,15 @@
+/*
+* page_capture.cpp - capture a page
+*
+* Licensed under GPLv2 orlater
+*
+* Author:	KaiWen<wenkai1987@gmail.com>
+* Date:		Mon Dec 16 15:55:09 CST 2013
+*/
 #include <iostream>
 #include <fstream>
 #include <boost/thread.hpp>
+#include <boost/foreach.hpp>
 #include <boost/program_options.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/xpressive/xpressive.hpp>
@@ -16,10 +25,10 @@ static const char* cl_host = "cl.or.gs";
 static const char* home_url = "thread0806.php?fid=16&search=1";
 static const unsigned int timeout_sec = 10;
 
-bool verbose;
-int threads;
-bg::date ge_day;
-int name_c;
+bool verbose;			// show verbose message
+int threads;			// threads num
+bg::date ge_day;		// the date which page shoule newer than
+int name_c;			// pic name index
 
 bx::sregex node_reg = bx::sregex::compile("<tr align=\"center\" class=\"tr3 t_one\" "
 	"onMouseOver=\"this.className='tr3 t_two'\" onMouseOut=\"this.className='tr3 t_one'\">.*?</tr>");
@@ -28,37 +37,39 @@ bx::sregex uri_reg = bx::sregex::compile("href=\"(.*?)\"");
 bx::sregex pic_reg = bx::sregex::compile("input type='image' src='(.*?)'");
 bx::sregex remote_pic_reg = bx::sregex::compile("http://(.*?)/(.*(\\..*))");
 
-void get_pic(const std::string& uri, int n) {
-	std::string page;
-	page_capture pcap(cl_host, uri, timeout_sec);
-	pcap.req_page();
-	pcap.get_page(page);
-
-	int t[] = {1};
-	bx::sregex_token_iterator it(page.begin(), page.end(), pic_reg, t);
-	bx::sregex_token_iterator end;
-
-	int i = 0;
-	for (; it != end; ++it) {
-		bx::smatch what;
-		if (!bx::regex_match(*it, what, remote_pic_reg))
-			continue;
-
-		std::cout << "get picture: " << *it << " #" << n << "." << ++i << std::endl;
-
-		std::string pic;
-		pic.reserve(64 * 1024);
-		page_capture pcap(what[1], what[2], timeout_sec);
+void get_pic(const std::vector<std::string>& uri_list, int n) {
+	BOOST_FOREACH(const std::string& uri, uri_list) {
+		std::string page;
+		page_capture pcap(cl_host, uri, timeout_sec);
 		pcap.req_page();
-		pcap.get_page(pic);
+		pcap.get_page(page);
 
-		boost::iterator_range<std::string::iterator> rng = boost::find_first(pic, "\r\n\r\n");
-		if (rng) {
-			std::string name("./pic/");
-			name += boost::lexical_cast<std::string>(++name_c);
-			name += what[3];
-			std::fstream file(name.c_str(), std::ios::out);
-			file.write(&pic[0] + std::distance(pic.begin(), rng.end()), pic.size());
+		int t[] = {1};
+		bx::sregex_token_iterator it(page.begin(), page.end(), pic_reg, t);
+		bx::sregex_token_iterator end;
+
+		int i = 0;
+		for (; it != end; ++it) {
+			bx::smatch what;
+			if (!bx::regex_match(*it, what, remote_pic_reg))
+				continue;
+
+			std::cout << "get picture: " << *it << " #" << n << "." << ++i << std::endl;
+
+			std::string pic;
+			pic.reserve(64 * 1024);
+			page_capture pcap(what[1], what[2], timeout_sec);
+			pcap.req_page();
+			pcap.get_page(pic);
+
+			boost::iterator_range<std::string::iterator> rng = boost::find_first(pic, "\r\n\r\n");
+			if (rng) {
+				std::string name("./pic/");
+				name += boost::lexical_cast<std::string>(++name_c);
+				name += what[3];
+				std::fstream file(name.c_str(), std::ios::out);
+				file.write(&pic[0] + std::distance(pic.begin(), rng.end()), pic.size());
+			}
 		}
 	}
 }
@@ -102,8 +113,22 @@ void parse_latest_page(const std::string& page) {
 
 	std::cout << "\n--------------------\n";
 	boost::thread_group tgrp;
-	for (int i = 0; i < threads; i++)
-		tgrp.create_thread(boost::bind(&get_pic, uri[i], i));
+	int uri_per_thread = uri.size() / threads;
+	for (int i = 0; i < threads; i++) {
+		std::vector<std::string>::iterator beg, end;
+		beg = uri.begin();
+
+		if (i == threads - 1) {
+			std::advance(beg, i * uri_per_thread);
+			end = uri.end();
+		} else {
+			std::advance(beg, i * uri_per_thread);
+			end = beg;
+			std::advance(end, uri_per_thread);
+		}
+
+		tgrp.create_thread(boost::bind(&get_pic, std::vector<std::string>(beg, end), i));
+	}
 
 	tgrp.join_all();
 }

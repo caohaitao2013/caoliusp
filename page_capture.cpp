@@ -1,3 +1,11 @@
+/*
+ * page_capture.cpp - capture a page
+ *
+ * Licensed under GPLv2 orlater
+ *
+ * Author:	KaiWen<wenkai1987@gmail.com>
+ * Date:	Mon Dec 16 15:55:09 CST 2013
+ */
 #include "page_capture.h"
 #include <boost/bind.hpp>
 #include <boost/make_shared.hpp>
@@ -16,6 +24,12 @@ page_capture::page_capture(const std::string& host, const std::string& path,
 {
 }
 
+/*
+ * req_page - request the page
+ *
+ * Return:	true on success, the inner buf store the page; false else,
+ * 		the inner page may have data, but not complete
+ */
 bool page_capture::req_page() {
 	ba::ip::tcp::resolver res(m_ios);
 	ba::ip::tcp::resolver::query qry(m_host, "80");
@@ -96,6 +110,11 @@ void page_capture::readed_some(const boost::system::error_code& e, size_t len,
 	sock->async_read_some(ba::buffer(&(*buf)[0], buf->size()), boost::bind(&page_capture::readed_some, this, _1, _2, buf, sock));
 }
 
+/*
+ * get_page - get the requested page
+ *
+ * @page:	an output parameter for assign the page to
+ */
 void page_capture::get_page(std::string& page) const {
 	page = m_page;
 }
