@@ -15,12 +15,13 @@ namespace ba = boost::asio;
 namespace bp = boost::posix_time;
 
 page_capture::page_capture(const std::string& host, const std::string& path, 
-	unsigned int timeout_sec) : 
+	unsigned int con_timeout_sec, unsigned int rw_timeout_ms) : 
 	m_host(host),
 	m_path(path),
-	m_timeout_sec(timeout_sec),
+	m_con_timeout_sec(con_timeout_sec),
+	m_rw_timeout_ms(rw_timeout_ms),
 	m_ret(false),
-	m_timer(m_ios, bp::seconds(timeout_sec))
+	m_timer(m_ios, bp::seconds(con_timeout_sec))
 {
 }
 
@@ -47,20 +48,16 @@ void page_capture::resoved(const boost::system::error_code& e,
 	if (e)
 		return ;
 
-	m_timer.expires_from_now(bp::seconds(m_timeout_sec));
+	m_timer.expires_from_now(bp::seconds(m_con_timeout_sec));
 	m_timer.async_wait(boost::bind(&page_capture::stop, this, _1));
 
 	sock_ptr sock = boost::make_shared<ba::ip::tcp::socket>(boost::ref(m_ios));
 	ba::async_connect(*sock, it, boost::bind(&page_capture::connected, this, _1, _2, sock));
-
-	ba::deadline_timer t(m_ios, bp::seconds(m_timeout_sec));
 }
 
 void page_capture::stop(const boost::system::error_code& e) {
-	if (!e) {
-		std::cout << "timeout: " << m_host << "/" << m_path << std::endl;
+	if (!e)
 		m_ios.stop();
-	}
 }
 
 void page_capture::connected(const boost::system::error_code& e, 
@@ -69,7 +66,7 @@ void page_capture::connected(const boost::system::error_code& e,
 	if (e)
 		return ;
 
-	m_timer.expires_from_now(bp::milliseconds(FAST_PAGE_TIMEOUT_MS));
+	m_timer.expires_from_now(bp::milliseconds(m_rw_timeout_ms));
 	m_timer.async_wait(boost::bind(&page_capture::stop, this, _1));
 
 	std::string uri("GET /");
@@ -87,7 +84,7 @@ void page_capture::writed(const boost::system::error_code& e, size_t len, sock_p
 	if (e)
 		return ;
 
-	m_timer.expires_from_now(bp::milliseconds(FAST_PAGE_TIMEOUT_MS));
+	m_timer.expires_from_now(bp::milliseconds(m_rw_timeout_ms));
 	m_timer.async_wait(boost::bind(&page_capture::stop, this, _1));
 
 	boost::shared_ptr<std::string> buf(boost::make_shared<std::string>());
@@ -103,7 +100,7 @@ void page_capture::readed_some(const boost::system::error_code& e, size_t len,
 		return ;
 	}
 
-	m_timer.expires_from_now(bp::milliseconds(FAST_PAGE_TIMEOUT_MS));
+	m_timer.expires_from_now(bp::milliseconds(m_rw_timeout_ms));
 	m_timer.async_wait(boost::bind(&page_capture::stop, this, _1));
 
 	m_page.append(*buf, 0, len);

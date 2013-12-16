@@ -12,13 +12,12 @@
 #include <boost/asio.hpp>
 #include <boost/shared_ptr.hpp>
 
-#define FAST_PAGE_TIMEOUT_MS 500
-
 class page_capture {
 	typedef boost::shared_ptr<boost::asio::ip::tcp::socket> sock_ptr;
 	typedef boost::shared_ptr<boost::asio::deadline_timer> timer_ptr;
 public:
-	page_capture(const std::string& host, const std::string& path, unsigned int timeout_sec);
+	page_capture(const std::string& host, const std::string& path, 
+		unsigned int con_timeout_sec, unsigned int rw_timeout_ms);
 
 	bool req_page();
 	void get_page(std::string& page) const;
@@ -35,7 +34,8 @@ private:
 	std::string m_host;
 	std::string m_path;
 	std::string m_page;
-	unsigned int m_timeout_sec;
+	unsigned int m_con_timeout_sec;
+	unsigned int m_rw_timeout_ms;
 	bool m_ret;
 	boost::asio::io_service m_ios;
 	boost::asio::deadline_timer m_timer;

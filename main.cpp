@@ -24,12 +24,13 @@ namespace bp = boost::program_options;
 
 static const char* cl_host = "cl.or.gs";
 static const char* home_url = "thread0806.php?fid=16&search=1";
-static const unsigned int timeout_sec = 10;
 
-bool verbose;			// show verbose message
-int threads;			// threads num
-bg::date ge_day;		// the date which page shoule newer than
-boost::atomic<int> name_c;	// pic name index
+bool verbose;				// show verbose message
+int threads;				// threads num
+bg::date ge_day;			// the date which page shoule newer than
+boost::atomic<int> name_c;		// pic name index
+unsigned int con_timeout_sec;		// tcp connect timeout seconds
+unsigned int rw_timeout_ms;		// tcp read/write timeout millisecond
 
 bx::sregex node_reg = bx::sregex::compile("<tr align=\"center\" class=\"tr3 t_one\" "
 	"onMouseOver=\"this.className='tr3 t_two'\" onMouseOut=\"this.className='tr3 t_one'\">.*?</tr>");
@@ -41,7 +42,7 @@ bx::sregex remote_pic_reg = bx::sregex::compile("http://(.*?)/(.*(\\..*))");
 void get_pic(const std::vector<std::string>& uri_list, int n) {
 	BOOST_FOREACH(const std::string& uri, uri_list) {
 		std::string page;
-		page_capture pcap(cl_host, uri, timeout_sec);
+		page_capture pcap(cl_host, uri, con_timeout_sec, rw_timeout_ms);
 		pcap.req_page();
 		pcap.get_page(page);
 
@@ -59,7 +60,7 @@ void get_pic(const std::vector<std::string>& uri_list, int n) {
 
 			std::string pic;
 			pic.reserve(64 * 1024);
-			page_capture pcap(what[1], what[2], timeout_sec);
+			page_capture pcap(what[1], what[2], con_timeout_sec, rw_timeout_ms);
 			pcap.req_page();
 			pcap.get_page(pic);
 
@@ -140,7 +141,9 @@ int main(int argc, char* argv[]) {
 		("help", "display this message")
 		("verbose,v", "show verbose message")
 		("thread,t", bp::value<int>(&threads)->default_value(1), "set multi-thread num")
-		("date,d", bp::value<std::string>(), "capture post newer than the date");
+		("date,d", bp::value<std::string>(), "capture post newer than the date")
+		("cont,c", bp::value<unsigned int>(&con_timeout_sec)->default_value(10), "tcp connect timeout seconds")
+		("rwt,r", bp::value<unsigned int>(&rw_timeout_ms)->default_value(500), "tcp read/write timeout milleseconds");
 
 	bp::variables_map vm;
 	bp::store(bp::parse_command_line(argc, argv, desc), vm);
@@ -155,7 +158,7 @@ int main(int argc, char* argv[]) {
 	ge_day = vm.count("date") ? bg::from_string(vm["date"].as<std::string>()) : bg::day_clock::local_day();
 
 	std::string page;
-	page_capture pcap(cl_host, home_url, timeout_sec);	// :-)
+	page_capture pcap(cl_host, home_url, con_timeout_sec, rw_timeout_ms);	// :-)
 	pcap.req_page();
 	pcap.get_page(page);
 	if (verbose)
