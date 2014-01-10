@@ -27,7 +27,8 @@ static const char* home_url = "thread0806.php?fid=16&search=1";
 
 bool verbose;				// show verbose message
 int threads;				// threads num
-bg::date ge_day;			// the date which page shoule newer than
+bg::date ge_day;			// the date which page shoule newer or equal than
+bg::date le_day;			// the date which page shoule older or equal than
 boost::atomic<int> name_c;		// pic name index
 unsigned int con_timeout_sec;		// tcp connect timeout seconds
 unsigned int rw_timeout_ms;		// tcp read/write timeout millisecond
@@ -84,7 +85,7 @@ void parse(const std::string& node, std::vector<std::string>& uri) {
 				std::cout << "regex-match#" << i << " " << what[i] << std::endl;
 		}
 
-		if (what[1] != "Top-marks" && bg::from_string(what[1]) >= ge_day) {
+		if (what[1] != "Top-marks" && ge_day <= bg::from_string(what[1]) && bg::from_string(what[1]) <= le_day) {
 			bx::smatch uri_match;
 			if (bx::regex_search(node, uri_match, uri_reg))
 				uri.push_back(uri_match[1]);
@@ -141,9 +142,10 @@ int main(int argc, char* argv[]) {
 		("help", "display this message")
 		("verbose,v", "show verbose message")
 		("thread,t", bp::value<int>(&threads)->default_value(1), "set multi-thread num")
-		("date,d", bp::value<std::string>(), "capture post newer than the date")
+		("fdate,g", bp::value<std::string>(), "capture post newer than the date")
+		("tdate,l", bp::value<std::string>(), "capture post newer than the date")
 		("cont,c", bp::value<unsigned int>(&con_timeout_sec)->default_value(10), "tcp connect timeout seconds")
-		("rwt,r", bp::value<unsigned int>(&rw_timeout_ms)->default_value(500), "tcp read/write timeout milleseconds");
+		("rwt,r", bp::value<unsigned int>(&rw_timeout_ms)->default_value(2000), "tcp read/write timeout milleseconds");
 
 	bp::variables_map vm;
 	bp::store(bp::parse_command_line(argc, argv, desc), vm);
@@ -155,7 +157,8 @@ int main(int argc, char* argv[]) {
 	}
 
 	verbose = vm.count("verbose") ? true : false;
-	ge_day = vm.count("date") ? bg::from_string(vm["date"].as<std::string>()) : bg::day_clock::local_day();
+	ge_day = vm.count("fdate") ? bg::from_string(vm["fdate"].as<std::string>()) : bg::day_clock::local_day();
+	le_day = vm.count("tdate") ? bg::from_string(vm["tdate"].as<std::string>()) : bg::day_clock::local_day();
 
 	std::string page;
 	page_capture pcap(cl_host, home_url, con_timeout_sec, rw_timeout_ms);	// :-)
