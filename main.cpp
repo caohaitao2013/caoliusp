@@ -32,6 +32,8 @@ bg::date le_day;			// the date which page shoule older or equal than
 boost::atomic<int> name_c;		// pic name index
 unsigned int con_timeout_sec;		// tcp connect timeout seconds
 unsigned int rw_timeout_ms;		// tcp read/write timeout millisecond
+int limit;				// picture count limit
+bool exit_flag = false;			// tell main thread exit
 
 bx::sregex node_reg = bx::sregex::compile("<tr align=\"center\" class=\"tr3 t_one\" "
 	"onMouseOver=\"this.className='tr3 t_two'\" onMouseOut=\"this.className='tr3 t_one'\">.*?</tr>");
@@ -73,6 +75,11 @@ void get_pic(const std::vector<std::string>& uri_list, int n) {
 				std::fstream file(name.c_str(), std::ios::out);
 				file.write(&pic[0] + std::distance(pic.begin(), rng.end()), pic.size());
 			}
+
+			if (limit > 0 && name_c >= limit) {
+				exit_flag = true;
+				return ;
+			}
 		}
 	}
 }
@@ -85,7 +92,8 @@ void parse(const std::string& node, std::vector<std::string>& uri) {
 				std::cout << "regex-match#" << i << " " << what[i] << std::endl;
 		}
 
-		if (what[1] != "Top-marks" && ge_day <= bg::from_string(what[1]) && bg::from_string(what[1]) <= le_day) {
+		bg::date d = bg::from_string(what[1]);
+		if (what[1] != "Top-marks" && ge_day <= d && d <= le_day) {
 			bx::smatch uri_match;
 			if (bx::regex_search(node, uri_match, uri_reg))
 				uri.push_back(uri_match[1]);
@@ -142,10 +150,11 @@ int main(int argc, char* argv[]) {
 		("help", "display this message")
 		("verbose,v", "show verbose message")
 		("thread,t", bp::value<int>(&threads)->default_value(1), "set multi-thread num")
-		("fdate,g", bp::value<std::string>(), "capture post newer than the date")
-		("tdate,l", bp::value<std::string>(), "capture post older than the date")
+		("fdate,n", bp::value<std::string>(), "capture post newer than the date(default today)")
+		("tdate,o", bp::value<std::string>(), "capture post older than the date(default today)")
 		("cont,c", bp::value<unsigned int>(&con_timeout_sec)->default_value(10), "tcp connect timeout seconds")
-		("rwt,r", bp::value<unsigned int>(&rw_timeout_ms)->default_value(2000), "tcp read/write timeout milleseconds");
+		("rwt,r", bp::value<unsigned int>(&rw_timeout_ms)->default_value(2000), "tcp read/write timeout milleseconds")
+		("limit,l", bp::value<int>(&limit)->default_value(-1), "picture limit count");
 
 	bp::variables_map vm;
 	bp::store(bp::parse_command_line(argc, argv, desc), vm);
@@ -161,15 +170,13 @@ int main(int argc, char* argv[]) {
 	le_day = vm.count("tdate") ? bg::from_string(vm["tdate"].as<std::string>()) : bg::day_clock::local_day();
 
 	std::string page;
-	bool err = false;
 	int n = 1;
-	while (!err) {
+	while (!exit_flag) {
 		std::string path = home_url + boost::lexical_cast<std::string>(n);
 		page_capture pcap(cl_host, path, con_timeout_sec, rw_timeout_ms);	// :-)
-		if (!pcap.req_page())
-			err = true;
-
+		pcap.req_page();
 		pcap.get_page(page);
+
 		if (verbose)
 			std::cout << "page:\n" << page << std::endl;
 
