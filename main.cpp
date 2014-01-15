@@ -92,11 +92,13 @@ void parse(const std::string& node, std::vector<std::string>& uri) {
 				std::cout << "regex-match#" << i << " " << what[i] << std::endl;
 		}
 
-		bg::date d = bg::from_string(what[1]);
-		if (what[1] != "Top-marks" && ge_day <= d && d <= le_day) {
-			bx::smatch uri_match;
-			if (bx::regex_search(node, uri_match, uri_reg))
-				uri.push_back(uri_match[1]);
+		if (what[1] != "Top-marks") {
+			bg::date d = bg::from_string(what[1]);
+			if (ge_day <= d && d <= le_day) {
+				bx::smatch uri_match;
+				if (bx::regex_search(node, uri_match, uri_reg))
+					uri.push_back(uri_match[1]);
+			}
 		}
 	} else {
 		if (verbose)
