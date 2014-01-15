@@ -23,7 +23,7 @@ namespace bg = boost::gregorian;
 namespace bp = boost::program_options;
 
 static const char* cl_host = "cl.or.gs";
-static const char* home_url = "thread0806.php?fid=16&search=1";
+static const char* home_url = "thread0806.php?fid=16&search=60&page=";
 
 bool verbose;				// show verbose message
 int threads;				// threads num
@@ -143,7 +143,7 @@ int main(int argc, char* argv[]) {
 		("verbose,v", "show verbose message")
 		("thread,t", bp::value<int>(&threads)->default_value(1), "set multi-thread num")
 		("fdate,g", bp::value<std::string>(), "capture post newer than the date")
-		("tdate,l", bp::value<std::string>(), "capture post newer than the date")
+		("tdate,l", bp::value<std::string>(), "capture post older than the date")
 		("cont,c", bp::value<unsigned int>(&con_timeout_sec)->default_value(10), "tcp connect timeout seconds")
 		("rwt,r", bp::value<unsigned int>(&rw_timeout_ms)->default_value(2000), "tcp read/write timeout milleseconds");
 
@@ -161,13 +161,21 @@ int main(int argc, char* argv[]) {
 	le_day = vm.count("tdate") ? bg::from_string(vm["tdate"].as<std::string>()) : bg::day_clock::local_day();
 
 	std::string page;
-	page_capture pcap(cl_host, home_url, con_timeout_sec, rw_timeout_ms);	// :-)
-	pcap.req_page();
-	pcap.get_page(page);
-	if (verbose)
-		std::cout << "page:\n" << page << std::endl;
+	bool err = false;
+	int n = 1;
+	while (!err) {
+		std::string path = home_url + boost::lexical_cast<std::string>(n);
+		page_capture pcap(cl_host, path, con_timeout_sec, rw_timeout_ms);	// :-)
+		if (!pcap.req_page())
+			err = true;
 
-	parse_latest_page(page);
+		pcap.get_page(page);
+		if (verbose)
+			std::cout << "page:\n" << page << std::endl;
+
+		parse_latest_page(page);
+		page.clear();
+	}
 
 	return 0;
 }
